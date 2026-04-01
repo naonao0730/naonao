@@ -11,9 +11,6 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
-// 先删除需要重建的表（结构变更）
-await pool.execute('DROP TABLE IF EXISTS api_keys').catch(() => {});
-
 // 建表
 const tables = [
   `CREATE TABLE IF NOT EXISTS accounts (
