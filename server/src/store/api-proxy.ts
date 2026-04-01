@@ -50,7 +50,7 @@ export async function upsertChannel(accountId: string, name: string): Promise<Ap
   const now = Math.floor(Date.now() / 1000);
   await db.execute(
     `INSERT INTO api_channels (id, account_id, name, provider, base_url, api_key, created_at)
-     VALUES (?, ?, ?, 'anthropic', 'https://api.xiaomimimo.com/anthropic', '', ?)`,
+     VALUES (?, ?, ?, 'anthropic', 'https://api.xiaomimimo.com', '', ?)`,
     [id, accountId, name, now],
   );
   return (await getChannel(id))!;
