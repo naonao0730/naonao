@@ -37,7 +37,6 @@ export const useStore = create<AppStore>((set, get) => ({
   models: [
     { name: 'mimo-v2-pro', model: 'clawl-alpha', temperature: 0.8, topP: 0.95, thinkingDefaultOn: true },
     { name: 'mimo-v2-flash', model: 'mimo-v2-flash-studio', temperature: 0.8, topP: 0.95, thinkingDefaultOn: true, isDefault: true },
-    { name: 'mimo-v2-omni', model: 'clawm-alpha', temperature: 0.8, topP: 0.95, thinkingDefaultOn: true, isOmni: true },
   ],
   activeModel: 'mimo-v2-flash-studio',
   conversations: [],

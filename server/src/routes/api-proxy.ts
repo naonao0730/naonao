@@ -5,6 +5,8 @@ import {
   getAllKeys, getKeyByValue, createApiKey, deleteApiKey,
   getAvailableChannel, ApiChannel,
 } from '../store/api-proxy.js';
+import { getAccount } from '../store/accounts.js';
+import { mimoClient } from '../services/mimo-client.js';
 
 const router = Router();
 
@@ -79,6 +81,52 @@ async function validateKey(req: any, _res: any, next: any) {
 }
 
 proxyForwardRouter.use(validateKey);
+
+// GET /v1/models — OpenAI 兼容的模型列表
+proxyForwardRouter.get('/models', async (req: any, res, next) => {
+  try {
+    const channel: ApiChannel = req.channel;
+    const account = await getAccount(channel.account_id);
+    if (!account) throw new ApiError(503, 'Channel account not found');
+
+    const config = await mimoClient.getBotConfig(account.id) as any;
+    const models = config?.data?.modelConfigListNg || config?.data?.modelConfigList || [];
+
+    res.json({
+      object: 'list',
+      data: models.map((m: any) => ({
+        id: m.model,
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'xiaomi',
+        name: m.name,
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+// 兼容 /v1/v1/models
+proxyForwardRouter.get('/v1/models', async (req: any, res, next) => {
+  try {
+    const channel: ApiChannel = req.channel;
+    const account = await getAccount(channel.account_id);
+    if (!account) throw new ApiError(503, 'Channel account not found');
+
+    const config = await mimoClient.getBotConfig(account.id) as any;
+    const models = config?.data?.modelConfigListNg || config?.data?.modelConfigList || [];
+
+    res.json({
+      object: 'list',
+      data: models.map((m: any) => ({
+        id: m.model,
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'xiaomi',
+        name: m.name,
+      })),
+    });
+  } catch (err) { next(err); }
+});
 
 /** 通用转发：透传请求和响应（支持流式 + 非流式） */
 async function proxyForward(req: any, res: any, next: any, upstreamPath: string, isAnthropic = false) {
