@@ -76,6 +76,11 @@ for (const sql of tables) {
   await pool.execute(sql);
 }
 
+// 清理旧数据：统一 base_url
+await pool.execute(
+  "UPDATE api_channels SET base_url = 'https://api.xiaomimimo.com' WHERE base_url != 'https://api.xiaomimimo.com'"
+).catch(() => {});
+
 console.log('MySQL connected and tables ensured');
 
 export default {
