@@ -21,6 +21,7 @@ app.use('/api/conversations', conversationsRouter);
 app.use('/api/claw', clawRouter);
 app.use('/api/proxy', apiProxyRouter);
 app.use('/api/v1', proxyForwardRouter);
+app.use('/v1', proxyForwardRouter);
 
 // 健康检查
 app.get('/api/health', (_req, res) => {
