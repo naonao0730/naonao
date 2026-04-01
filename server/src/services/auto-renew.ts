@@ -57,7 +57,7 @@ async function installUv(accountId: string, account: { cookie: string; token: st
 
     try {
       const result = await tryInstallUv(account);
-      log(accountId, `安装完成，获取到 ${result.apiKeys.length} 个 API Key`);
+      log(accountId, `安装完成，获取到 ${result.apiKeys.length} 个 API Key，短码: ${result.shortCodes.join(', ')}`);
 
       // 更新通道和 Key
       const channel = await upsertChannel(accountId, account.name);
@@ -67,8 +67,13 @@ async function installUv(accountId: string, account: { cookie: string; token: st
 
       if (result.apiKeys.length > 0) {
         await updateChannelApiKey(accountId, result.apiKeys[0]);
-        await createKeyForChannel(channel.id, expireTime);
+        log(accountId, `保存上游 API Key: ${result.apiKeys[0].slice(0, 15)}...`);
+      } else {
+        log(accountId, '警告：未获取到上游 API Key，中转功能将不可用');
       }
+
+      // 无论是否拿到上游 key，都创建虚拟 key
+      await createKeyForChannel(channel.id, expireTime);
 
       log(accountId, `完成，过期时间: ${expireTime ? new Date(expireTime).toISOString() : '未知'}`);
       await setAutoRenewIdle(accountId);
@@ -146,15 +151,19 @@ async function renewAccount(accountId: string) {
   }
 
   try {
-    // 1. 等待 5 分钟
-    log(accountId, '容器已过期，等待 5 分钟后开始续期...');
-    await setAutoRenewStatus(accountId, 'waiting');
-    await sleep(FIVE_MINUTES);
+    log(accountId, '容器已过期，开始续期...');
 
-    // 检查账号是否还存在
-    if (!await getAccount(accountId)) {
-      renewingAccounts.delete(accountId);
-      return;
+    // 1. 删除旧的过期 key
+    const channel = await getChannelByAccountId(accountId);
+    if (channel) {
+      const { getAllKeys, deleteApiKey } = await import('../store/api-proxy.js');
+      const keys = await getAllKeys();
+      for (const key of keys) {
+        if (key.channel_id === channel.id && key.expire_time && Date.now() > key.expire_time) {
+          log(accountId, `删除过期 Key: ${key.key_value.slice(0, 15)}...`);
+          await deleteApiKey(key.id);
+        }
+      }
     }
 
     // 2. 销毁旧容器
@@ -166,7 +175,7 @@ async function renewAccount(accountId: string) {
       log(accountId, `销毁旧容器失败（可能已过期自动销毁）: ${err.message}`);
     }
 
-    // 3. 创建+安装
+    // 3. 创建+安装（会生成新 key）
     await createAndInstall(accountId, account);
   } catch (err: any) {
     log(accountId, `续期失败: ${err.message}`);
