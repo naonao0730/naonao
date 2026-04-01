@@ -76,6 +76,7 @@ proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
     const channel = await getChannel(apiKey.channel_id);
     if (!channel) throw new ApiError(500, 'Channel not found');
     if (!channel.is_active) throw new ApiError(403, 'Channel is disabled');
+    if (!channel.api_key) throw new ApiError(500, 'Channel has no upstream API key - uv may not be installed');
 
     // 3. 检查模型白名单
     if (channel.model_whitelist) {
@@ -88,6 +89,7 @@ proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
 
     // 4. 转发到上游
     const upstreamUrl = `${channel.base_url.replace(/\/+$/, '')}/v1/chat/completions`;
+    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl}`);
     const upstreamRes = await fetch(upstreamUrl, {
       method: 'POST',
       headers: {

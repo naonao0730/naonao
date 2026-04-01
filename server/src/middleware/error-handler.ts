@@ -9,9 +9,10 @@ export class ApiError extends Error {
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof ApiError) {
+    console.error(`[API Error] ${err.statusCode}: ${err.message}`);
     res.status(err.statusCode).json({ error: err.message });
     return;
   }
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'Internal server error', detail: err.message });
 }
