@@ -84,8 +84,15 @@ export async function getKeyByValue(keyValue: string): Promise<ApiKey | undefine
   return db.get<ApiKey>('SELECT * FROM api_keys WHERE key_value = ? AND is_active = 1', [keyValue]);
 }
 
-/** 为某个通道创建虚拟 Key，绑定到容器的过期时间 */
+/** 为某个通道创建虚拟 Key（如果已存在则复用），绑定到容器的过期时间 */
 export async function createKeyForChannel(channelId: string, expireTime: number | null): Promise<ApiKey> {
+  // 检查是否已有该通道的 key
+  const existing = await db.get<ApiKey>('SELECT * FROM api_keys WHERE channel_id = ? AND name = ? LIMIT 1', [channelId, 'auto']);
+  if (existing) {
+    // 更新过期时间
+    await db.execute('UPDATE api_keys SET expire_time = ?, is_active = 1 WHERE id = ?', [expireTime, existing.id]);
+    return (await db.get<ApiKey>('SELECT * FROM api_keys WHERE id = ?', [existing.id]))!;
+  }
   const id = uuidv4();
   const key_value = 'sk-mimo-' + randomBytes(24).toString('hex');
   await db.execute(
