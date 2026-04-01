@@ -33,7 +33,7 @@ COPY --from=backend-build /app/server/dist ./dist
 
 # 前端
 COPY --from=frontend-build /app/client/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # 启动脚本
 WORKDIR /app
