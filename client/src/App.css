@@ -1,0 +1,942 @@
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 18px;
+  color: #666;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: #1a1a2e;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.sidebar-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.account-selector {
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.account-selector select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #3a3a5a;
+  background: #2a2a4a;
+  color: #fff;
+  font-size: 14px;
+}
+
+.nav {
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-link {
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #aaa;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background: #2a2a4a;
+  color: #fff;
+}
+
+.nav-link.active {
+  background: #3a3a6a;
+  color: #fff;
+}
+
+/* Main */
+.main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+/* Chat */
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-header {
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-header select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.chat-header .btn-new {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.chat-header .btn-new:hover {
+  background: #f0f0f0;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #4a6cf7;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.message.assistant {
+  align-self: flex-start;
+  background: #fff;
+  color: #333;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message.streaming {
+  opacity: 0.8;
+}
+
+.message .cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: #4a6cf7;
+  animation: blink 1s infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.chat-input {
+  padding: 16px 20px;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 12px;
+}
+
+.chat-input textarea {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  min-height: 44px;
+  max-height: 120px;
+}
+
+.chat-input textarea:focus {
+  outline: none;
+  border-color: #4a6cf7;
+}
+
+.chat-input button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #4a6cf7;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.chat-input button:hover {
+  background: #3a5ce7;
+}
+
+.chat-input button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-bar {
+  padding: 8px 20px;
+  background: #fee;
+  color: #c00;
+  font-size: 13px;
+  text-align: center;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 16px;
+}
+
+/* Accounts Page */
+.accounts-page {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.accounts-page h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.account-form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.account-form input {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.account-form input:first-child {
+  flex: 0 0 150px;
+}
+
+.account-form input:nth-child(2) {
+  flex: 1;
+}
+
+.account-form button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #4a6cf7;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.account-token {
+  font-size: 12px;
+  color: #999;
+  font-family: monospace;
+}
+
+.account-card button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #c00;
+}
+
+.account-card button:hover {
+  background: #fee;
+}
+
+/* Claw Page */
+.claw-page {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.claw-page h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.claw-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.claw-card {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.claw-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.claw-account-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.claw-status-card {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.status-label {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-NOT_CREATED { background: #eee; color: #666; }
+.status-CREATING { background: #fff3cd; color: #856404; }
+.status-AVAILABLE { background: #d4edda; color: #155724; }
+.status-DESTROYING { background: #f8d7da; color: #721c24; }
+.status-DESTROYED { background: #eee; color: #666; }
+
+.claw-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.claw-controls button {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-create {
+  background: #28a745;
+  color: #fff;
+}
+
+.btn-destroy {
+  background: #dc3545;
+  color: #fff;
+}
+
+.btn-create:disabled, .btn-destroy:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.claw-files {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+}
+
+.file-list li {
+  padding: 6px 0;
+  font-size: 14px;
+  font-family: monospace;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.file-list li:last-child {
+  border-bottom: none;
+}
+
+/* Sidebar conversations */
+.sidebar-conversations {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.conv-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #aaa;
+  transition: all 0.2s;
+}
+
+.conv-item:hover {
+  background: #2a2a4a;
+  color: #fff;
+}
+
+.conv-item.active {
+  background: #3a3a6a;
+  color: #fff;
+}
+
+.conv-item .conv-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conv-item .conv-delete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.conv-item:hover .conv-delete {
+  opacity: 1;
+}
+
+.conv-item .conv-delete:hover {
+  color: #f66;
+}
+
+/* Install Section */
+.btn-install-uv {
+  background: #17a2b8;
+  color: #fff;
+}
+
+.btn-install-uv:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.install-section {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.install-logs {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-line {
+  padding: 1px 0;
+}
+
+.install-result {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.install-result h4 {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.api-key-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.api-key-row:last-child {
+  border-bottom: none;
+}
+
+.short-code {
+  font-size: 13px;
+  color: #666;
+  min-width: 80px;
+}
+
+.api-key-value {
+  flex: 1;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.copy-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  background: #e9ecef;
+}
+
+.no-key {
+  font-size: 13px;
+  color: #999;
+}
+
+/* API Proxy Page */
+.proxy-page {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.proxy-page h2 {
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.proxy-section {
+  margin-bottom: 32px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.proxy-section h3 {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.proxy-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.proxy-form input,
+.proxy-form select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.proxy-form input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.proxy-form select {
+  flex: 0 0 160px;
+  width: 160px;
+  appearance: auto;
+  cursor: pointer;
+}
+
+.proxy-form button {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #4a6cf7;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.proxy-form button:hover {
+  background: #3a5ce7;
+}
+
+.model-whitelist {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 100%;
+  min-width: 100%;
+  padding: 4px 0;
+}
+
+.model-whitelist-label {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.model-whitelist label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.model-whitelist label:has(input:checked) {
+  background: #e8f0fe;
+  border-color: #4a6cf7;
+  color: #4a6cf7;
+}
+
+.channel-list,
+.key-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.channel-card,
+.key-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.channel-card.disabled {
+  opacity: 0.6;
+}
+
+.channel-info,
+.key-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-name,
+.key-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.channel-provider {
+  padding: 2px 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.channel-url {
+  font-size: 12px;
+  color: #888;
+  font-family: monospace;
+}
+
+.channel-status {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.channel-status.active {
+  color: #28a745;
+}
+
+.channel-status.inactive {
+  color: #dc3545;
+}
+
+.channel-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.channel-actions button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn-danger {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-danger:hover {
+  background: #fee !important;
+}
+
+.key-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.key-channel {
+  font-size: 12px;
+  color: #888;
+}
+
+.key-value {
+  flex: 1;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key-value-row .copy-btn,
+.key-value-row .btn-danger {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.key-value-row .copy-btn:hover {
+  background: #e9ecef;
+}
+
+.empty-hint {
+  color: #999;
+  font-size: 14px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.proxy-usage {
+  margin-top: 20px;
+  padding: 16px;
+  background: #1e1e1e;
+  border-radius: 6px;
+}
+
+.proxy-usage h4 {
+  color: #ccc;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.proxy-usage pre {
+  color: #d4d4d4;
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Auto Renew */
+.auto-renew-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.auto-renew-header h3 {
+  margin-bottom: 0;
+}
+
+.btn-primary {
+  background: #4a6cf7;
+  color: #fff;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #3a5ce7;
+}
+
+.auto-renew-status {
+  margin-bottom: 12px;
+}
+
+.renew-indicator {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eee;
+  color: #666;
+}
+
+.renew-indicator.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.renew-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.renew-account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  border-left: 3px solid #ccc;
+}
+
+.renew-account-card.renew-waiting {
+  border-left-color: #ffc107;
+}
+
+.renew-account-card.renew-destroying,
+.renew-account-card.renew-creating,
+.renew-account-card.renew-installing {
+  border-left-color: #4a6cf7;
+}
+
+.renew-account-card.renew-error {
+  border-left-color: #dc3545;
+}
+
+.renew-account-name {
+  font-family: monospace;
+  font-size: 13px;
+  color: #333;
+}
+
+.renew-account-status {
+  font-size: 12px;
+  color: #666;
+}
+
+.renew-error {
+  font-size: 12px;
+  color: #dc3545;
+}
