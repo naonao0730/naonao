@@ -1,24 +1,16 @@
 version: '3.8'
 
 services:
-  backend:
+  app:
     build:
-      context: ./server
-      dockerfile: ../Dockerfile.backend
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:8080"
     env_file:
       - .env
     environment:
       - PORT=3001
       - MIMO_BASE_URL=https://aistudio.xiaomimimo.com
       - NODE_ENV=production
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./client
-      dockerfile: ../Dockerfile.frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
     restart: unless-stopped
