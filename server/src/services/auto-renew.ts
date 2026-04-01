@@ -91,33 +91,66 @@ async function installUv(accountId: string, account: { cookie: string; token: st
 
 /** 统一的创建+安装uv流程 */
 async function createAndInstall(accountId: string, account: { cookie: string; token: string; name: string }) {
-  // 先检查当前容器状态
-  let clawData: { status: string; expireTime?: number } | null = null;
-  try {
-    clawData = await getClawData(accountId);
-  } catch (err: any) {
-    log(accountId, `获取容器状态失败 (${err?.message})，将尝试直接创建`);
-  }
+  const MAX_CREATE_RETRIES = 3;
 
-  if (clawData?.status === 'AVAILABLE') {
-    // 已有运行中的容器，直接安装 uv
-    log(accountId, '已有活跃工作空间，直接安装 uv');
-  } else if (clawData?.status === 'CREATING') {
-    // 容器正在创建中，等待就绪
-    log(accountId, '工作空间正在创建中，等待就绪...');
-    await waitForContainerReady(accountId, 60_000);
-  } else {
-    // 没有容器或状态未知，尝试创建新容器
-    log(accountId, '正在创建工作空间...');
+  for (let attempt = 1; attempt <= MAX_CREATE_RETRIES; attempt++) {
+    // 先检查当前容器状态
+    let clawData: { status: string; expireTime?: number } | null = null;
+    try {
+      clawData = await getClawData(accountId);
+    } catch (err: any) {
+      log(accountId, `获取容器状态失败 (${err?.message})`);
+    }
+
+    const status = clawData?.status || 'UNKNOWN';
+
+    if (status === 'AVAILABLE') {
+      log(accountId, '工作空间就绪，开始安装 uv');
+      await installUv(accountId, account);
+      return; // 成功
+    }
+
+    if (status === 'CREATING') {
+      log(accountId, `工作空间正在创建中，等待就绪... (第 ${attempt}/${MAX_CREATE_RETRIES} 轮)`);
+      try {
+        await waitForContainerReady(accountId, 120_000);
+        log(accountId, '工作空间就绪，开始安装 uv');
+        await installUv(accountId, account);
+        return; // 成功
+      } catch {
+        log(accountId, '等待超时，将重新检查状态');
+        continue; // 回到循环顶部重新检查
+      }
+    }
+
+    // NOT_CREATED / UNKNOWN / 其他状态 — 尝试创建
+    log(accountId, `状态: ${status}，正在创建工作空间... (第 ${attempt}/${MAX_CREATE_RETRIES} 次)`);
     await setAutoRenewStatus(accountId, 'creating');
-    await mimoClient.createClaw(accountId);
+    try {
+      await mimoClient.createClaw(accountId);
+    } catch (err: any) {
+      log(accountId, `创建工作空间失败: ${err.message}`);
+      if (attempt < MAX_CREATE_RETRIES) {
+        await sleep(10_000);
+        continue;
+      }
+      throw err;
+    }
 
     // 等待容器就绪
     log(accountId, '等待工作空间就绪...');
-    await waitForContainerReady(accountId, 60_000);
+    try {
+      await waitForContainerReady(accountId, 120_000);
+      log(accountId, '工作空间就绪，开始安装 uv');
+      await installUv(accountId, account);
+      return; // 成功
+    } catch {
+      log(accountId, '等待超时，将重新尝试');
+      // 继续下一轮循环
+    }
   }
 
-  await installUv(accountId, account);
+  throw new Error(`经过 ${MAX_CREATE_RETRIES} 次尝试仍未能创建并启动工作空间`);
 }
 
 /** 初始化账号：没有安装 uv 时自动安装 */
@@ -176,10 +209,16 @@ async function renewAccount(accountId: string) {
 
 async function waitForContainerReady(accountId: string, timeoutMs: number): Promise<void> {
   const start = Date.now();
+  let lastStatus = '';
   while (Date.now() - start < timeoutMs) {
     try {
       const clawData = await getClawData(accountId);
-      if (clawData?.status === 'AVAILABLE') return;
+      const status = clawData?.status || 'UNKNOWN';
+      if (status !== lastStatus) {
+        log(accountId, `容器状态: ${status}`);
+        lastStatus = status;
+      }
+      if (status === 'AVAILABLE') return;
     } catch {
       // 忽略，继续等待
     }
@@ -203,25 +242,28 @@ async function collectPendingTasks(): Promise<Array<{ accountId: string; type: '
 
     try {
       const clawData = await getClawData(acc.id);
+      const status = clawData?.status || 'UNKNOWN';
 
-      if (clawData?.status === 'AVAILABLE' && clawData.expireTime) {
-        if (now > clawData.expireTime) {
+      if (status === 'AVAILABLE') {
+        // 容器可用
+        if (clawData?.expireTime && now > clawData.expireTime) {
           log(acc.id, `检测到容器已过期 (${new Date(clawData.expireTime).toISOString()})`);
           tasks.push({ accountId: acc.id, type: 'renew' });
         } else {
+          // 检查是否装了 uv
           const channel = await getChannelByAccountId(acc.id);
           if (!channel || !channel.api_key) {
             log(acc.id, '容器运行中但未安装 uv');
             tasks.push({ accountId: acc.id, type: 'init' });
           }
         }
-      } else if (clawData?.status === 'NOT_CREATED') {
-        log(acc.id, '检测到无工作空间');
+      } else {
+        // 非 AVAILABLE 状态（NOT_CREATED / CREATING / UNKNOWN 等），都需要初始化
+        log(acc.id, `容器状态: ${status}，需要初始化`);
         tasks.push({ accountId: acc.id, type: 'init' });
       }
     } catch (err: any) {
       // API 调用失败（cookie 过期、网络问题等），也尝试初始化
-      // 没有容器就创建容器，有容器但没装 uv 就安装
       const channel = await getChannelByAccountId(acc.id);
       if (!channel || !channel.api_key) {
         log(acc.id, `API 调用失败 (${err?.message || 'unknown'})，尝试初始化`);
