@@ -71,20 +71,29 @@ export async function deleteChannel(id: string): Promise<boolean> {
 // --- 轮询选通道 ---
 
 let roundRobinIndex = 0;
+let selecting = false;
 
-/** 从所有可用通道中轮询选一个 */
+/** 从所有可用通道中轮询选一个（带锁防并发交错） */
 export async function getAvailableChannel(): Promise<ApiChannel | null> {
-  const channels = await db.query<ApiChannel>(
-    `SELECT * FROM api_channels
-     WHERE is_active = 1 AND api_key != ''
-     AND (expire_time IS NULL OR expire_time > ?)`,
-    [Date.now()],
-  );
-  if (channels.length === 0) return null;
-  roundRobinIndex = roundRobinIndex % channels.length;
-  const channel = channels[roundRobinIndex];
-  roundRobinIndex = (roundRobinIndex + 1) % channels.length;
-  return channel;
+  while (selecting) {
+    await new Promise(resolve => setTimeout(resolve, 1));
+  }
+  selecting = true;
+  try {
+    const channels = await db.query<ApiChannel>(
+      `SELECT * FROM api_channels
+       WHERE is_active = 1 AND api_key != ''
+       AND (expire_time IS NULL OR expire_time > ?)`,
+      [Date.now()],
+    );
+    if (channels.length === 0) return null;
+    roundRobinIndex = roundRobinIndex % channels.length;
+    const channel = channels[roundRobinIndex];
+    roundRobinIndex = (roundRobinIndex + 1) % channels.length;
+    return channel;
+  } finally {
+    selecting = false;
+  }
 }
 
 // --- API Keys (全局虚拟 Key，不绑定通道) ---

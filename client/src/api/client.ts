@@ -20,8 +20,8 @@ export const api = {
   getAccounts: () => request<Account[]>('/accounts'),
   createAccount: (name: string, token: string, cookie?: string) =>
     request<Account>('/accounts', { method: 'POST', body: JSON.stringify({ name, token, cookie }) }),
-  updateAccount: (id: string, name?: string, token?: string) =>
-    request<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify({ name, token }) }),
+  updateAccount: (id: string, name?: string, token?: string, cookie?: string) =>
+    request<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify({ name, token, cookie }) }),
   deleteAccount: (id: string) =>
     request<{ success: boolean }>(`/accounts/${id}`, { method: 'DELETE' }),
   getProfile: (accountId: string) =>
