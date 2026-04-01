@@ -54,10 +54,14 @@ export default router;
 export const proxyForwardRouter = Router();
 
 // --- 验证虚拟 Key 的中间件 ---
+// 兼容两种传 key 方式：Authorization: Bearer sk-mimo-xxx 或 x-api-key: sk-mimo-xxx
 async function validateKey(req: any, _res: any, next: any) {
   try {
     const auth = req.headers.authorization || '';
-    const keyValue = auth.replace(/^Bearer\s+/i, '');
+    let keyValue = auth.replace(/^Bearer\s+/i, '');
+    if (!keyValue) {
+      keyValue = req.headers['x-api-key'] || '';
+    }
     if (!keyValue || !keyValue.startsWith('sk-mimo-')) {
       throw new ApiError(401, 'Invalid API key');
     }
