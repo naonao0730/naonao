@@ -95,7 +95,12 @@ async function installUv(accountId: string, account: { cookie: string; token: st
 /** 统一的创建+安装uv流程 */
 async function createAndInstall(accountId: string, account: { cookie: string; token: string; name: string }) {
   // 先检查当前容器状态
-  const clawData = await getClawData(accountId);
+  let clawData: { status: string; expireTime?: number } | null = null;
+  try {
+    clawData = await getClawData(accountId);
+  } catch (err: any) {
+    log(accountId, `获取容器状态失败 (${err?.message})，将尝试直接创建`);
+  }
 
   if (clawData?.status === 'AVAILABLE') {
     // 已有运行中的容器，直接安装 uv
@@ -105,7 +110,7 @@ async function createAndInstall(accountId: string, account: { cookie: string; to
     log(accountId, '工作空间正在创建中，等待就绪...');
     await waitForContainerReady(accountId, 60_000);
   } else {
-    // 没有容器，创建新容器
+    // 没有容器或状态未知，尝试创建新容器
     log(accountId, '正在创建工作空间...');
     await setAutoRenewStatus(accountId, 'creating');
     await mimoClient.createClaw(accountId);
@@ -230,9 +235,12 @@ async function collectPendingTasks(): Promise<Array<{ accountId: string; type: '
         log(acc.id, '检测到无工作空间');
         tasks.push({ accountId: acc.id, type: 'init' });
       }
-    } catch {
+    } catch (err: any) {
+      // API 调用失败（cookie 过期、网络问题等），也尝试初始化
+      // 没有容器就创建容器，有容器但没装 uv 就安装
       const channel = await getChannelByAccountId(acc.id);
       if (!channel || !channel.api_key) {
+        log(acc.id, `API 调用失败 (${err?.message || 'unknown'})，尝试初始化`);
         tasks.push({ accountId: acc.id, type: 'init' });
       }
     }
