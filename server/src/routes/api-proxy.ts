@@ -53,7 +53,14 @@ export default router;
 
 export const proxyForwardRouter = Router();
 
-proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
+// 兼容两种客户端配置：
+// base_url = https://xxx/api/v1  → 请求 /api/v1/chat/completions
+// base_url = https://xxx/api/v1  → 客户端额外拼 /v1 → 请求 /api/v1/v1/chat/completions
+// 两种都转发到同一个处理函数
+proxyForwardRouter.post('/chat/completions', handleChatCompletions);
+proxyForwardRouter.post('/v1/chat/completions', handleChatCompletions);
+
+async function handleChatCompletions(req: any, res: any, next: any) {
   try {
     // 1. 提取虚拟 Key
     const auth = req.headers.authorization || '';
@@ -103,4 +110,4 @@ proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
     }
     res.end();
   } catch (err) { next(err); }
-});
+}
