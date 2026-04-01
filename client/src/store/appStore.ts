@@ -34,8 +34,12 @@ interface AppStore {
 export const useStore = create<AppStore>((set, get) => ({
   accounts: [],
   activeAccountId: null,
-  models: [],
-  activeModel: 'mimo-v2-flash-studio',
+  models: [
+    { name: 'MiMo v2 Pro', model: 'mimo-v2-pro', temperature: 0.7, topP: 0.95, thinkingDefaultOn: false },
+    { name: 'MiMo v2 Flash', model: 'mimo-v2-flash', temperature: 0.7, topP: 0.95, thinkingDefaultOn: false, isDefault: true },
+    { name: 'MiMo v2 Omni', model: 'mimo-v2-omni', temperature: 0.7, topP: 0.95, thinkingDefaultOn: false, isOmni: true },
+  ],
+  activeModel: 'mimo-v2-flash',
   conversations: [],
   activeConversationId: null,
   messages: [],
@@ -55,12 +59,14 @@ export const useStore = create<AppStore>((set, get) => ({
     set({ activeAccountId: id, conversations: [], messages: [], activeConversationId: null });
     try {
       const modelsData = await api.getModels(id) as { data?: { modelConfigListNg?: ModelConfig[] } };
-      const configs: ModelConfig[] = modelsData?.data?.modelConfigListNg || [];
-      set({ models: configs });
-      if (configs.length > 0) {
-        const defaultModel = configs.find(m => m.isDefault) || configs[0];
-        set({ activeModel: defaultModel.model });
-      }
+      const remote: ModelConfig[] = modelsData?.data?.modelConfigListNg || [];
+      // 合并：硬编码模型为基础，接口返回的补充/覆盖
+      const base = get().models;
+      const remoteModels = remote.filter(r => !base.some(b => b.model === r.model));
+      const merged = [...base, ...remoteModels];
+      set({ models: merged });
+      const defaultModel = merged.find(m => m.isDefault) || merged[0];
+      set({ activeModel: defaultModel.model });
     } catch (e) {
       console.error('Failed to load models:', e);
     }

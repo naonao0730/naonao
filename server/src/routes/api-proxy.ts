@@ -3,7 +3,7 @@ import { ApiError } from '../middleware/error-handler.js';
 import {
   getAllChannels, deleteChannel,
   getAllKeys, getKeyByValue, createApiKey, deleteApiKey,
-  getAvailableChannel,
+  getAvailableChannel, ApiChannel,
 } from '../store/api-proxy.js';
 
 const router = Router();
@@ -65,11 +65,15 @@ async function validateKey(req: any, _res: any, next: any) {
     if (!keyValue || !keyValue.startsWith('sk-mimo-')) {
       throw new ApiError(401, 'Invalid API key');
     }
-    const apiKey = await getKeyByValue(keyValue);
+    // 两次数据库查询并行
+    const [apiKey, channel] = await Promise.all([
+      getKeyByValue(keyValue),
+      getAvailableChannel(),
+    ]);
     if (!apiKey) throw new ApiError(401, 'Invalid or disabled API key');
-    (req as any).channel = await getAvailableChannel();
-    if (!(req as any).channel) throw new ApiError(503, 'No available upstream channels');
-    if (!(req as any).channel.api_key) throw new ApiError(503, 'Channel has no upstream API key');
+    if (!channel) throw new ApiError(503, 'No available upstream channels');
+    if (!channel.api_key) throw new ApiError(503, 'Channel has no upstream API key');
+    (req as any).channel = channel;
     next();
   } catch (err) { next(err); }
 }
@@ -87,6 +91,7 @@ async function proxyForward(req: any, res: any, next: any, upstreamPath: string,
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': isStream ? 'text/event-stream' : 'application/json',
+      'Accept-Encoding': 'gzip, deflate',
     };
     // Anthropic 格式用 x-api-key，OpenAI 格式用 Authorization: Bearer
     if (isAnthropic) {
@@ -96,11 +101,22 @@ async function proxyForward(req: any, res: any, next: any, upstreamPath: string,
       headers['Authorization'] = `Bearer ${channel.api_key}`;
     }
 
-    const upstreamRes = await fetch(upstreamUrl, {
+    let upstreamRes = await fetch(upstreamUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(req.body),
     });
+
+    // 上游 5xx 错误时重试一次
+    if (upstreamRes.status >= 500) {
+      console.log(`[proxy] upstream 5xx (${upstreamRes.status}), retrying once...`);
+      await new Promise(r => setTimeout(r, 1000));
+      upstreamRes = await fetch(upstreamUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(req.body),
+      });
+    }
 
     res.status(upstreamRes.status);
     for (const [key, value] of upstreamRes.headers.entries()) {

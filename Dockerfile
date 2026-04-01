@@ -14,7 +14,7 @@ COPY server/package.json server/package-lock.json* ./
 RUN npm install
 COPY server/tsconfig.json ./
 COPY server/src/ ./src/
-RUN npx tsc
+RUN ./node_modules/.bin/tsc
 
 # ---- 运行 ----
 FROM node:20-alpine
