@@ -9,9 +9,10 @@ services:
       - "3001:3001"
     volumes:
       - db-data:/app/data
+    env_file:
+      - .env
     environment:
       - PORT=3001
-      - DB_PATH=/app/data/mimo.db
       - MIMO_BASE_URL=https://aistudio.xiaomimimo.com
       - NODE_ENV=production
     restart: unless-stopped
@@ -25,6 +26,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-volumes:
-  db-data:
