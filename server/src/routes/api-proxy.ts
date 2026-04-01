@@ -73,20 +73,28 @@ async function validateKey(req: any, _res: any, next: any) {
 proxyForwardRouter.use(validateKey);
 
 /** 通用转发：透传请求和响应（支持流式 + 非流式） */
-async function proxyForward(req: any, res: any, next: any, upstreamPath: string) {
+async function proxyForward(req: any, res: any, next: any, upstreamPath: string, isAnthropic = false) {
   try {
     const channel = req.channel;
     const upstreamUrl = `${channel.base_url.replace(/\/+$/, '')}${upstreamPath}`;
     const isStream = req.body?.stream === true;
-    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl} (channel: ${channel.name}, key: ${channel.api_key?.slice(0, 15)}..., path: ${upstreamPath})`);
+    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl} (channel: ${channel.name}, key: ${channel.api_key?.slice(0, 15)}...)`);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': isStream ? 'text/event-stream' : 'application/json',
+    };
+    // Anthropic 格式用 x-api-key，OpenAI 格式用 Authorization: Bearer
+    if (isAnthropic) {
+      headers['x-api-key'] = channel.api_key!;
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers['Authorization'] = `Bearer ${channel.api_key}`;
+    }
 
     const upstreamRes = await fetch(upstreamUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${channel.api_key}`,
-        'Accept': isStream ? 'text/event-stream' : 'application/json',
-      },
+      headers,
       body: JSON.stringify(req.body),
     });
 
@@ -121,5 +129,5 @@ proxyForwardRouter.post('/chat/completions', (req, res, next) => proxyForward(re
 proxyForwardRouter.post('/v1/chat/completions', (req, res, next) => proxyForward(req, res, next, '/v1/chat/completions'));
 
 // Anthropic 格式: https://api.xiaomimimo.com/anthropic/v1/messages
-proxyForwardRouter.post('/messages', (req, res, next) => proxyForward(req, res, next, '/anthropic/v1/messages'));
-proxyForwardRouter.post('/v1/messages', (req, res, next) => proxyForward(req, res, next, '/anthropic/v1/messages'));
+proxyForwardRouter.post('/messages', (req, res, next) => proxyForward(req, res, next, '/anthropic/v1/messages', true));
+proxyForwardRouter.post('/v1/messages', (req, res, next) => proxyForward(req, res, next, '/anthropic/v1/messages', true));
