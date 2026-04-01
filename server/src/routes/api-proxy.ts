@@ -78,7 +78,7 @@ async function proxyForward(req: any, res: any, next: any, upstreamPath: string)
     const channel = req.channel;
     const upstreamUrl = `${channel.base_url.replace(/\/+$/, '')}${upstreamPath}`;
     const isStream = req.body?.stream === true;
-    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl} (channel: ${channel.name})`);
+    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl} (channel: ${channel.name}, key: ${channel.api_key?.slice(0, 15)}..., path: ${upstreamPath})`);
 
     const upstreamRes = await fetch(upstreamUrl, {
       method: 'POST',
