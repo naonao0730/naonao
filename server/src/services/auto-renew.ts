@@ -136,6 +136,12 @@ async function initAccount(accountId: string) {
 
   try {
     log(accountId, '检测到未安装 uv，自动处理中...');
+    // 先清理该通道下可能残留的旧 key
+    const channel = await getChannelByAccountId(accountId);
+    if (channel) {
+      const { deleteKeysForChannel } = await import('../store/api-proxy.js');
+      await deleteKeysForChannel(channel.id);
+    }
     await createAndInstall(accountId, account);
   } catch (err: any) {
     log(accountId, `初始化失败: ${err.message}`);
@@ -158,17 +164,12 @@ async function renewAccount(accountId: string) {
   try {
     log(accountId, '容器已过期，开始续期...');
 
-    // 1. 删除旧的过期 key
+    // 1. 删除该通道下所有旧 key（确保只保留一个）
     const channel = await getChannelByAccountId(accountId);
     if (channel) {
-      const { getAllKeys, deleteApiKey } = await import('../store/api-proxy.js');
-      const keys = await getAllKeys();
-      for (const key of keys) {
-        if (key.channel_id === channel.id && key.expire_time && Date.now() > key.expire_time) {
-          log(accountId, `删除过期 Key: ${key.key_value.slice(0, 15)}...`);
-          await deleteApiKey(key.id);
-        }
-      }
+      const { deleteKeysForChannel } = await import('../store/api-proxy.js');
+      const deleted = await deleteKeysForChannel(channel.id);
+      if (deleted > 0) log(accountId, `清理了 ${deleted} 个旧 Key`);
     }
 
     // 2. 销毁旧容器

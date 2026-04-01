@@ -107,6 +107,12 @@ export async function deleteApiKey(id: string): Promise<boolean> {
   return result.changes > 0;
 }
 
+/** 删除某个通道下的所有 key */
+export async function deleteKeysForChannel(channelId: string): Promise<number> {
+  const result = await db.run('DELETE FROM api_keys WHERE channel_id = ?', [channelId]);
+  return result.changes;
+}
+
 /** 检查 Key 是否有效（未过期） */
 export function isKeyValid(key: ApiKey): boolean {
   if (!key.is_active) return false;
