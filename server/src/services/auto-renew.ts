@@ -1,7 +1,7 @@
 import { mimoClient, installUvViaWebSocket } from './mimo-client.js';
 import { getAccount, getAllAccounts } from '../store/accounts.js';
 import {
-  upsertChannel, setChannelExpiry, updateChannelApiKey, createKeyForChannel,
+  upsertChannel, setChannelExpiry, updateChannelApiKey,
   getChannelByAccountId,
 } from '../store/api-proxy.js';
 import {
@@ -59,8 +59,8 @@ async function installUv(accountId: string, account: { cookie: string; token: st
       const result = await tryInstallUv(account);
       log(accountId, `安装完成，获取到 ${result.apiKeys.length} 个 API Key，短码: ${result.shortCodes.join(', ')}`);
 
-      // 更新通道和 Key
-      const channel = await upsertChannel(accountId, account.name);
+      // 更新通道
+      await upsertChannel(accountId, account.name);
       const clawData = await getClawData(accountId);
       const expireTime = clawData?.expireTime || null;
       if (expireTime) await setChannelExpiry(accountId, expireTime);
@@ -71,9 +71,6 @@ async function installUv(accountId: string, account: { cookie: string; token: st
       } else {
         log(accountId, '警告：未获取到上游 API Key，中转功能将不可用');
       }
-
-      // 无论是否拿到上游 key，都创建虚拟 key
-      await createKeyForChannel(channel.id, expireTime);
 
       log(accountId, `完成，过期时间: ${expireTime ? new Date(expireTime).toISOString() : '未知'}`);
       await setAutoRenewIdle(accountId);
@@ -136,12 +133,6 @@ async function initAccount(accountId: string) {
 
   try {
     log(accountId, '检测到未安装 uv，自动处理中...');
-    // 先清理该通道下可能残留的旧 key
-    const channel = await getChannelByAccountId(accountId);
-    if (channel) {
-      const { deleteKeysForChannel } = await import('../store/api-proxy.js');
-      await deleteKeysForChannel(channel.id);
-    }
     await createAndInstall(accountId, account);
   } catch (err: any) {
     log(accountId, `初始化失败: ${err.message}`);
@@ -164,15 +155,7 @@ async function renewAccount(accountId: string) {
   try {
     log(accountId, '容器已过期，开始续期...');
 
-    // 1. 删除该通道下所有旧 key（确保只保留一个）
-    const channel = await getChannelByAccountId(accountId);
-    if (channel) {
-      const { deleteKeysForChannel } = await import('../store/api-proxy.js');
-      const deleted = await deleteKeysForChannel(channel.id);
-      if (deleted > 0) log(accountId, `清理了 ${deleted} 个旧 Key`);
-    }
-
-    // 2. 销毁旧容器
+    // 1. 销毁旧容器
     log(accountId, '正在销毁旧容器...');
     await setAutoRenewStatus(accountId, 'destroying');
     try {

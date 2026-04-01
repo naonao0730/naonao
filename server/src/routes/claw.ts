@@ -3,7 +3,7 @@ import { getAccount } from '../store/accounts.js';
 import { mimoClient, installUvViaWebSocket } from '../services/mimo-client.js';
 import { ApiError } from '../middleware/error-handler.js';
 import { getInstallStatus, initInstallStatus, appendInstallLog, setInstallResult, setInstallError } from '../store/install-status.js';
-import { upsertChannel, setChannelExpiry, updateChannelApiKey, createKeyForChannel } from '../store/api-proxy.js';
+import { upsertChannel, setChannelExpiry, updateChannelApiKey } from '../store/api-proxy.js';
 import { startAutoRenew, stopAutoRenew, isAutoRenewRunning, getAllRenewStatuses } from '../services/auto-renew.js';
 
 const router = Router();
@@ -103,13 +103,12 @@ router.post('/install-uv', async (req, res, next) => {
       async (result) => {
         await setInstallResult(accountId, result);
         // 自动创建通道 + 绑定 Key
-        const channel = await upsertChannel(accountId, account.name);
+        await upsertChannel(accountId, account.name);
         const status = await mimoClient.getClawStatus(account.id);
         const expireTime = (status as any)?.expireTime || null;
         if (expireTime) await setChannelExpiry(accountId, expireTime);
         if (result.apiKeys?.length > 0) {
           await updateChannelApiKey(accountId, result.apiKeys[0]);
-          await createKeyForChannel(channel.id, expireTime);
         }
         res.write(`event: result\ndata: ${JSON.stringify(result)}\n\n`);
         res.end();

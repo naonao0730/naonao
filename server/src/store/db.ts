@@ -11,6 +11,9 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
+// 先删除需要重建的表（结构变更）
+await pool.execute('DROP TABLE IF EXISTS api_keys').catch(() => {});
+
 // 建表
 const tables = [
   `CREATE TABLE IF NOT EXISTS accounts (
@@ -52,13 +55,10 @@ const tables = [
   )`,
   `CREATE TABLE IF NOT EXISTS api_keys (
     id VARCHAR(36) PRIMARY KEY,
-    channel_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
     key_value VARCHAR(255) NOT NULL UNIQUE,
     is_active TINYINT DEFAULT 1,
-    expire_time BIGINT,
-    created_at BIGINT DEFAULT 0,
-    FOREIGN KEY (channel_id) REFERENCES api_channels(id) ON DELETE CASCADE
+    created_at BIGINT DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS install_status (
     account_id VARCHAR(36) PRIMARY KEY,

@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { ApiError } from '../middleware/error-handler.js';
 import {
-  getAllChannels, getChannel, deleteChannel,
-  getAllKeys, getKeyByValue, deleteApiKey, isKeyValid,
+  getAllChannels, deleteChannel,
+  getAllKeys, getKeyByValue, createApiKey, deleteApiKey,
+  getAvailableChannel,
 } from '../store/api-proxy.js';
 
 const router = Router();
@@ -12,15 +13,7 @@ const router = Router();
 // 通道列表
 router.get('/channels', async (_req, res) => {
   const channels = await getAllChannels();
-  const keys = await getAllKeys();
-  const keyCountMap = new Map<string, number>();
-  for (const k of keys) {
-    keyCountMap.set(k.channel_id, (keyCountMap.get(k.channel_id) || 0) + 1);
-  }
-  res.json(channels.map(ch => ({
-    ...ch,
-    key_count: keyCountMap.get(ch.id) || 0,
-  })));
+  res.json(channels);
 });
 
 // 删除通道
@@ -34,15 +27,16 @@ router.delete('/channels/:id', async (req, res, next) => {
 // 虚拟 Key 列表
 router.get('/keys', async (_req, res) => {
   const keys = await getAllKeys();
-  const channels = new Map((await getAllChannels()).map(c => [c.id, c]));
-  res.json(keys.map(k => {
-    const ch = channels.get(k.channel_id);
-    return {
-      ...k,
-      channel_name: ch?.name || '(已删除)',
-      expired: k.expire_time ? Date.now() > k.expire_time : false,
-    };
-  }));
+  res.json(keys);
+});
+
+// 创建虚拟 Key
+router.post('/keys', async (req, res, next) => {
+  try {
+    const name = req.body?.name || 'default';
+    const key = await createApiKey(name);
+    res.json(key);
+  } catch (err) { next(err); }
 });
 
 // 删除虚拟 Key
@@ -70,26 +64,15 @@ proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
 
     const apiKey = await getKeyByValue(keyValue);
     if (!apiKey) throw new ApiError(401, 'Invalid or disabled API key');
-    if (!isKeyValid(apiKey)) throw new ApiError(401, 'API key expired');
 
-    // 2. 查找绑定的通道
-    const channel = await getChannel(apiKey.channel_id);
-    if (!channel) throw new ApiError(500, 'Channel not found');
-    if (!channel.is_active) throw new ApiError(403, 'Channel is disabled');
-    if (!channel.api_key) throw new ApiError(500, 'Channel has no upstream API key - uv may not be installed');
+    // 2. 轮询选一个可用通道
+    const channel = await getAvailableChannel();
+    if (!channel) throw new ApiError(503, 'No available upstream channels');
+    if (!channel.api_key) throw new ApiError(503, 'Channel has no upstream API key - uv may not be installed');
 
-    // 3. 检查模型白名单
-    if (channel.model_whitelist) {
-      const whitelist = JSON.parse(channel.model_whitelist) as string[];
-      const reqModel = req.body?.model;
-      if (reqModel && whitelist.length > 0 && !whitelist.includes(reqModel)) {
-        throw new ApiError(403, `Model "${reqModel}" is not allowed for this channel`);
-      }
-    }
-
-    // 4. 转发到上游
+    // 3. 转发到上游
     const upstreamUrl = `${channel.base_url.replace(/\/+$/, '')}/v1/chat/completions`;
-    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl}`);
+    console.log(`[proxy] ${req.body?.model || '?'} -> ${upstreamUrl} (channel: ${channel.name})`);
     const upstreamRes = await fetch(upstreamUrl, {
       method: 'POST',
       headers: {
@@ -100,7 +83,7 @@ proxyForwardRouter.post('/chat/completions', async (req, res, next) => {
       body: JSON.stringify(req.body),
     });
 
-    // 5. 转发响应
+    // 4. 转发响应
     res.status(upstreamRes.status);
     const contentType = upstreamRes.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);

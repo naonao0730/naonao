@@ -82,6 +82,8 @@ export const api = {
   deleteChannel: (id: string) =>
     request<{ success: boolean }>(`/proxy/channels/${id}`, { method: 'DELETE' }),
   getApiKeys: () => request<any[]>('/proxy/keys'),
+  createApiKey: (name: string) =>
+    request<any>('/proxy/keys', { method: 'POST', body: JSON.stringify({ name }) }),
   deleteApiKey: (id: string) =>
     request<{ success: boolean }>(`/proxy/keys/${id}`, { method: 'DELETE' }),
 };

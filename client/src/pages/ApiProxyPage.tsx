@@ -11,19 +11,14 @@ interface Channel {
   model_whitelist: string | null;
   is_active: number;
   expire_time: number | null;
-  key_count: number;
   created_at: number;
 }
 
 interface ApiKeyItem {
   id: string;
-  channel_id: string;
   name: string;
   key_value: string;
-  channel_name?: string;
-  expired: boolean;
   is_active: number;
-  expire_time: number | null;
   created_at: number;
 }
 
@@ -39,7 +34,7 @@ function formatTime(ts: number | null): string {
 function ChannelSection({ channels }: { channels: Channel[] }) {
   return (
     <div className="proxy-section">
-      <h3>通道管理</h3>
+      <h3>上游通道</h3>
       <div className="channel-list">
         {channels.length === 0 && <div className="empty-hint">暂无通道，先创建工作空间并运行安装 uv</div>}
         {channels.map(ch => (
@@ -48,7 +43,6 @@ function ChannelSection({ channels }: { channels: Channel[] }) {
               <span className="channel-name">{ch.name}</span>
               <span className="channel-provider">{ch.provider}</span>
               <span className="channel-url">{ch.base_url}</span>
-              <span className="channel-keys">{ch.key_count} 个 Key</span>
               <span className={`channel-status ${ch.is_active ? 'active' : 'inactive'}`}>
                 {ch.is_active ? '启用' : '禁用'}
               </span>
@@ -67,6 +61,15 @@ function ChannelSection({ channels }: { channels: Channel[] }) {
 
 function KeySection({ keys, reload }: { keys: ApiKeyItem[]; reload: () => void }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [newKeyName, setNewKeyName] = useState('');
+
+  const handleCreate = async () => {
+    try {
+      await api.createApiKey(newKeyName || 'default');
+      setNewKeyName('');
+      reload();
+    } catch (err: any) { alert('创建失败: ' + err.message); }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除该 Key？')) return;
@@ -85,17 +88,22 @@ function KeySection({ keys, reload }: { keys: ApiKeyItem[]; reload: () => void }
   return (
     <div className="proxy-section">
       <h3>虚拟 Key 管理</h3>
+      <div className="key-create-bar">
+        <input
+          type="text"
+          placeholder="Key 名称（可选）"
+          value={newKeyName}
+          onChange={e => setNewKeyName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleCreate()}
+        />
+        <button className="btn-primary" onClick={handleCreate}>创建 Key</button>
+      </div>
       <div className="key-list">
-        {keys.length === 0 && <div className="empty-hint">暂无虚拟 Key，运行安装 uv 后自动生成</div>}
+        {keys.length === 0 && <div className="empty-hint">暂无虚拟 Key，点击上方按钮创建</div>}
         {keys.map(k => (
-          <div key={k.id} className={`key-card ${k.expired ? 'key-expired' : ''}`}>
+          <div key={k.id} className="key-card">
             <div className="key-info">
-              <span className="key-channel">← {k.channel_name || '未知'}</span>
-              {k.expire_time && (
-                <span className={`key-expire ${k.expired ? 'expired' : ''}`}>
-                  {formatTime(k.expire_time)}
-                </span>
-              )}
+              <span className="key-name">{k.name}</span>
             </div>
             <div className="key-value-row">
               <code className="key-value">{k.key_value}</code>
@@ -111,7 +119,7 @@ function KeySection({ keys, reload }: { keys: ApiKeyItem[]; reload: () => void }
       {keys.length > 0 && (
         <div className="proxy-usage">
           <h4>使用方式</h4>
-          <pre>{`curl -X POST http://localhost:3001/v1/chat/completions \\
+          <pre>{`curl -X POST https://mimo2.zeabur.app/api/v1/chat/completions \\
   -H "Authorization: Bearer ${keys[0]?.key_value || 'sk-mimo-xxx'}" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"mimo-v2-pro","messages":[{"role":"user","content":"hello"}],"stream":true}'`}</pre>
@@ -123,7 +131,7 @@ function KeySection({ keys, reload }: { keys: ApiKeyItem[]; reload: () => void }
 
 const RENEW_STATUS_LABELS: Record<string, string> = {
   idle: '空闲',
-  waiting: '等待 5 分钟冷却中...',
+  waiting: '等待中...',
   destroying: '正在销毁旧容器...',
   creating: '正在创建新容器...',
   installing: '正在安装 uv...',

@@ -17,11 +17,9 @@ export interface ApiChannel {
 
 export interface ApiKey {
   id: string;
-  channel_id: string;
   name: string;
   key_value: string;
   is_active: number;
-  expire_time: number | null;
   created_at: number;
 }
 
@@ -59,10 +57,6 @@ export async function upsertChannel(accountId: string, name: string): Promise<Ap
 /** 更新通道的 expire_time（容器启动时调用） */
 export async function setChannelExpiry(accountId: string, expireTime: number): Promise<void> {
   await db.execute('UPDATE api_channels SET expire_time = ? WHERE account_id = ?', [expireTime, accountId]);
-  const ch = await getChannelByAccountId(accountId);
-  if (ch) {
-    await db.execute('UPDATE api_keys SET expire_time = ? WHERE channel_id = ?', [expireTime, ch.id]);
-  }
 }
 
 export async function updateChannelApiKey(accountId: string, apiKey: string): Promise<void> {
@@ -74,7 +68,26 @@ export async function deleteChannel(id: string): Promise<boolean> {
   return result.changes > 0;
 }
 
-// --- API Keys ---
+// --- 轮询选通道 ---
+
+let roundRobinIndex = 0;
+
+/** 从所有可用通道中轮询选一个 */
+export async function getAvailableChannel(): Promise<ApiChannel | null> {
+  const channels = await db.query<ApiChannel>(
+    `SELECT * FROM api_channels
+     WHERE is_active = 1 AND api_key != ''
+     AND (expire_time IS NULL OR expire_time > ?)`,
+    [Date.now()],
+  );
+  if (channels.length === 0) return null;
+  roundRobinIndex = roundRobinIndex % channels.length;
+  const channel = channels[roundRobinIndex];
+  roundRobinIndex = (roundRobinIndex + 1) % channels.length;
+  return channel;
+}
+
+// --- API Keys (全局虚拟 Key，不绑定通道) ---
 
 export async function getAllKeys(): Promise<ApiKey[]> {
   return db.query<ApiKey>('SELECT * FROM api_keys ORDER BY created_at DESC');
@@ -84,20 +97,14 @@ export async function getKeyByValue(keyValue: string): Promise<ApiKey | undefine
   return db.get<ApiKey>('SELECT * FROM api_keys WHERE key_value = ? AND is_active = 1', [keyValue]);
 }
 
-/** 为某个通道创建虚拟 Key（如果已存在则复用），绑定到容器的过期时间 */
-export async function createKeyForChannel(channelId: string, expireTime: number | null): Promise<ApiKey> {
-  // 检查是否已有该通道的 key
-  const existing = await db.get<ApiKey>('SELECT * FROM api_keys WHERE channel_id = ? AND name = ? LIMIT 1', [channelId, 'auto']);
-  if (existing) {
-    // 更新过期时间
-    await db.execute('UPDATE api_keys SET expire_time = ?, is_active = 1 WHERE id = ?', [expireTime, existing.id]);
-    return (await db.get<ApiKey>('SELECT * FROM api_keys WHERE id = ?', [existing.id]))!;
-  }
+/** 创建虚拟 Key */
+export async function createApiKey(name: string): Promise<ApiKey> {
   const id = uuidv4();
   const key_value = 'sk-mimo-' + randomBytes(24).toString('hex');
+  const now = Math.floor(Date.now() / 1000);
   await db.execute(
-    'INSERT INTO api_keys (id, channel_id, name, key_value, expire_time) VALUES (?, ?, ?, ?, ?)',
-    [id, channelId, 'auto', key_value, expireTime],
+    'INSERT INTO api_keys (id, name, key_value, created_at) VALUES (?, ?, ?, ?)',
+    [id, name, key_value, now],
   );
   return (await db.get<ApiKey>('SELECT * FROM api_keys WHERE id = ?', [id]))!;
 }
@@ -105,17 +112,4 @@ export async function createKeyForChannel(channelId: string, expireTime: number 
 export async function deleteApiKey(id: string): Promise<boolean> {
   const result = await db.run('DELETE FROM api_keys WHERE id = ?', [id]);
   return result.changes > 0;
-}
-
-/** 删除某个通道下的所有 key */
-export async function deleteKeysForChannel(channelId: string): Promise<number> {
-  const result = await db.run('DELETE FROM api_keys WHERE channel_id = ?', [channelId]);
-  return result.changes;
-}
-
-/** 检查 Key 是否有效（未过期） */
-export function isKeyValid(key: ApiKey): boolean {
-  if (!key.is_active) return false;
-  if (key.expire_time && Date.now() > key.expire_time) return false;
-  return true;
 }
